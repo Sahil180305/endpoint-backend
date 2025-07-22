@@ -237,9 +237,158 @@ const refreshAccessToken = asyncHandler( async (req,res)=>{
     }
 })
 
+const changeCurrentPassword = asyncHandler( async (req , res )=>{
+    const {oldPassword , newPassword} = req.body
+    const user = await User.findById(req.user?._id);
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+    if(!isPasswordCorrect){
+        throw new ApiError(401,"Invalid old Password")
+    }
+    user.password = newPassword;
+    user.save({validateBeforeSave:false});
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,{},"Password changed successfully")
+    )
+})
+
+const getCurrentUser = asyncHandler(
+    async (req,res) =>{
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                req.user,
+                "User fetched successfully"
+            )
+        )
+
+    }
+) 
+
+const updateAccountDetails = asyncHandler(
+    async (req,res) => {
+        // check if user is login ->middleware
+        // get data from frontend
+        // validation of data
+        // find and update the user db
+        // return 
+
+        const {fullName , email } = req.body;
+
+        if(!fullName || !email){
+            throw new ApiError(401,"All fields are required")
+        }
+
+        const user = await User.findByIdAndUpdate(
+            req.user?._id,
+            {
+                $set : {
+                    fullName,
+                    email
+                }
+            },
+            {
+                new: true
+            }
+        ).select("-password")
+
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                user,
+                "Account details updated successfully"
+            )
+        )
+    }
+)
+
+const updateUserAvator = asyncHandler( async (req,res) =>{
+    const avatorLocalPath  = req.file?.path
+
+    if(!avatorLocalPath){
+        throw new ApiError(401,"Avator file is missing")
+    }
+
+    const avator = await uploadOnCloudinary(avatorLocalPath);
+
+    if(!avator.url){
+        throw new ApiError(500,"Error while uploading on avator")
+    }
+
+    const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+        $set:{
+            avator : avator.url
+        }
+    },
+    {new:true}
+    ).select("-password -refreshToken")
+
+    if(!user){
+        throw new ApiError(
+            501,
+            "Can not find the user in Database try again"
+        )
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,user,"Avator image updated successfully")
+    )
+})
+
+const updateUserCoverImage = asyncHandler( async (req,res) =>{
+    const coverImageLocalPath  = req.file?.path
+
+    if(!coverImageLocalPath){
+        throw new ApiError(401,"Cover Image file is missing")
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+
+    if(!coverImage.url){
+        throw new ApiError(500,"Error while uploading on avator")
+    }
+
+    const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+        $set:{
+            coverImage : coverImage.url
+        }
+    },
+    {new:true}
+    ).select("-password -refreshToken")
+
+    if(!user){
+        throw new ApiError(
+            501,
+            "Can not find the user in Database try again"
+        )
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,user,"Cover image updated successfully")
+    )
+})
+
 export {
     regesterUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvator,
+    updateUserCoverImage
 };
